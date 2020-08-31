@@ -37,7 +37,7 @@ class ModelSaverBase(object):
         if keep_checkpoint > 0:
             self.checkpoint_queue = deque([], maxlen=keep_checkpoint)
 
-    def save(self, step, moving_average=None):
+    def save(self, step, is_best, moving_average=None):
         """Main entry point for model saver
 
         It wraps the `_save` method with checks and apply `keep_checkpoint`
@@ -54,7 +54,7 @@ class ModelSaverBase(object):
                 model_params_data.append(param.data)
                 param.data = avg.data
 
-        chkpt, chkpt_name = self._save(step, save_model)
+        chkpt, chkpt_name = self._save(step, is_best, save_model)
         self.last_saved_step = step
 
         if moving_average:
@@ -97,7 +97,7 @@ class ModelSaverBase(object):
 class ModelSaver(ModelSaverBase):
     """Simple model saver to filesystem"""
 
-    def _save(self, step, model):
+    def _save(self, step, is_best, model):
         model_state_dict = model.state_dict()
         model_state_dict = {k: v for k, v in model_state_dict.items()
                             if 'generator' not in k}
@@ -128,6 +128,10 @@ class ModelSaver(ModelSaverBase):
         logger.info("Saving checkpoint %s_step_%d.pt" % (self.base_path, step))
         checkpoint_path = '%s_step_%d.pt' % (self.base_path, step)
         torch.save(checkpoint, checkpoint_path)
+        if is_best:
+            logger.info("Obtained best checkpoint, saving...")
+            best_checkpoint_path = '%s_best.pt' % (self.base_path)
+            torch.save(checkpoint, best_checkpoint_path)
         return checkpoint, checkpoint_path
 
     def _rm_checkpoint(self, name):

@@ -267,6 +267,17 @@ class Trainer(object):
             if self.average_decay > 0 and i % self.average_every == 0:
                 self._update_average(step)
 
+            perplexity = report_stats.ppl()
+            if i == 0:
+                best_perplexity = perplexity
+                is_best = True
+            else:
+                if perplexity < best_perplexity:
+                    best_perplexity = perplexity
+                    is_best = True
+                else:
+                    is_best = False
+
             report_stats = self._maybe_report_training(
                 step, train_steps,
                 self.optim.learning_rate(),
@@ -297,13 +308,13 @@ class Trainer(object):
             if (self.model_saver is not None
                 and (save_checkpoint_steps != 0
                      and step % save_checkpoint_steps == 0)):
-                self.model_saver.save(step, moving_average=self.moving_average)
+                self.model_saver.save(step, is_best, moving_average=self.moving_average)
 
             if train_steps > 0 and step >= train_steps:
                 break
 
         if self.model_saver is not None:
-            self.model_saver.save(step, moving_average=self.moving_average)
+            self.model_saver.save(step, is_best, moving_average=self.moving_average)
         return total_stats
 
     def validate(self, valid_iter, moving_average=None):
